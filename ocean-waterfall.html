@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 海底瀑布 - 数学函数可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, #000033 0%, #000011 100%);
+        }
+
+        /* 控制面板 */
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 20, 60, 0.85);
+            border: 2px solid #00ffff;
+            border-radius: 12px;
+            padding: 20px;
+            width: 320px;
+            max-height: 85vh;
+            overflow-y: auto;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.2);
+        }
+
+        .control-title {
+            color: #00ffff;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid #00ffff;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .control-group label {
+            display: block;
+            color: #00ffff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #0099ff, #00ffff);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.9);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.9);
+        }
+
+        .control-group span {
+            display: inline-block;
+            color: #00ff88;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .control-group button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #00ffff, #0099ff);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .control-group button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 255, 255, 0.6);
+        }
+
+        .control-group button:active {
+            transform: translateY(0);
+        }
+
+        /* 信息面板 */
+        #info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 20, 60, 0.85);
+            border: 2px solid #00ffff;
+            border-radius: 12px;
+            padding: 18px;
+            color: #00ffff;
+            font-size: 12px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            max-width: 280px;
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.2);
+        }
+
+        #info h3 {
+            color: #00ff88;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 8px;
+        }
+
+        #info p {
+            margin: 6px 0;
+            line-height: 1.6;
+            color: #00ccff;
+        }
+
+        #info span {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        /* 标题 */
+        #title {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #00ffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            z-index: 90;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        /* 滚动条 */
+        #controls::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #controls::-webkit-scrollbar-track {
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        #controls::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        #controls::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="title">🌊 3D 海底瀑布场景</div>
+    
+    <!-- 控制面板 -->
+    <div id="controls">
+        <div class="control-title">⚙️ 场景控制</div>
+        
+        <div class="control-group">
+            <label>🌊 海水波动强度</label>
+            <input type="range" id="waveAmplitude" min="0" max="3" step="0.1" value="0.8">
+            <span id="waveAmplitudeValue">0.8</span>
+        </div>
+        
+        <div class="control-group">
+            <label>💧 瀑布粒子数量</label>
+            <input type="range" id="particleCount" min="2000" max="15000" step="1000" value="8000">
+            <span id="particleCountValue">8000</span>
+        </div>
+        
+        <div class="control-group">
+            <label>⬇️ 瀑布流速</label>
+            <input type="range" id="waterfallSpeed" min="0.05" max="0.5" step="0.02" value="0.15">
+            <span id="waterfallSpeedValue">0.15</span>
+        </div>
+        
+        <div class="control-group">
+            <label>☀️ 光照强度</label>
+            <input type="range" id="lightIntensity" min="0.3" max="2" step="0.1" value="1.2">
+            <span id="lightIntensityValue">1.2</span>
+        </div>
+
+        <div class="control-group">
+            <label>🌫️ 雾气浓度</label>
+            <input type="range" id="fogDensity" min="0.002" max="0.015" step="0.001" value="0.008">
+            <span id="fogDensityValue">0.008</span>
+        </div>
+        
+        <div class="control-group">
+            <button id="resetBtn">🔄 重置场景</button>
+            <button id="toggleInfo">ℹ️ 显示/隐藏信息</button>
+        </div>
+    </div>
+    
+    <!-- 信息面板 -->
+    <div id="info">
+        <h3>📊 场景信息</h3>
+        <p>FPS: <span id="fps">60</span></p>
+        <p>粒子数: <span id="particleNum">8000</span></p>
+        <p>🖱️ 拖拽旋转 | 滚轮缩放</p>
+        <p>📐 使用数学函数生成</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ============ 工具函数 ============
+        class FPSCounter {
+            constructor() {
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastTime = Date.now();
+            }
+            update() {
+                this.frameCount++;
+                const currentTime = Date.now();
+                const deltaTime = currentTime - this.lastTime;
+                if (deltaTime >= 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / deltaTime);
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+                return this.fps;
+            }
+        }
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // Perlin噪声
+        class SimplexNoise {
+            constructor(seed = 0) {
+                this.p = [];
+                this.seed = seed;
+                this.init();
+            }
+            init() {
+                const p = [];
+                for (let i = 0; i < 256; i++) p[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const j = Math.floor((Math.random() + this.seed) * (i + 1));
+                    [p[i], p[j]] = [p[j], p[i]];
+                }
+                this.p = p.concat(p);
+            }
+            fade(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            }
+            lerp(t, a, b) {
+                return a + t * (b - a);
+            }
+            grad(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 8 ? y : x;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+            noise(x, y) {
+                const xi = Math.floor(x) & 255;
+                const yi = Math.floor(y) & 255;
+                const xf = x - Math.floor(x);
+                const yf = y - Math.floor(y);
+                const u = this.fade(xf);
+                const v = this.fade(yf);
+                const aa = this.p[this.p[xi] + yi];
+                const ab = this.p[this.p[xi] + yi + 1];
+                const ba = this.p[this.p[xi + 1] + yi];
+                const bb = this.p[this.p[xi + 1] + yi + 1];
+                const x1 = this.lerp(u, this.grad(aa, xf, yf), this.grad(ba, xf - 1, yf));
+                const x2 = this.lerp(u, this.grad(ab, xf, yf - 1), this.grad(bb, xf - 1, yf - 1));
+                return this.lerp(v, x1, x2);
+            }
+        }
+
+        // ============ 海洋类 ============
+        class Ocean {
+            constructor(scene, width = 250, height = 250, widthSegments = 120, heightSegments = 120) {
+                this.scene = scene;
+                this.width = width;
+                this.height = height;
+                this.mesh = null;
+                this.waveAmplitude = 0.8;
+                this.waveFrequency = 0.04;
+                this.waveSpeed = 0.015;
+                this.time = 0;
+                this.noise = new SimplexNoise();
+                this.init();
+            }
+
+            init() {
+                const geometry = new THREE.PlaneGeometry(this.width, this.height, widthSegments, heightSegments);
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x001a4d,
+                    emissive: 0x002266,
+                    shininess: 120,
+                    wireframe: false,
+                    side: THREE.DoubleSide,
+                });
+
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.rotation.x = -Math.PI / 2;
+                this.mesh.receiveShadow = true;
+                this.mesh.castShadow = true;
+
+                this.positionAttribute = geometry.getAttribute('position');
+                this.initialPositions = new Float32Array(this.positionAttribute.array);
+                this.scene.add(this.mesh);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime * this.waveSpeed;
+                const positions = this.positionAttribute.array;
+                const positionCount = this.positionAttribute.count;
+
+                for (let i = 0; i < positionCount; i++) {
+                    const i3 = i * 3;
+                    const x = this.initialPositions[i3];
+                    const z = this.initialPositions[i3 + 2];
+
+                    const wave1 = Math.sin(x * this.waveFrequency + this.time) * this.waveAmplitude;
+                    const wave2 = Math.sin(z * this.waveFrequency + this.time * 0.8) * this.waveAmplitude * 0.8;
+                    const wave3 = Math.cos((x + z) * this.waveFrequency * 0.5 + this.time * 1.5) * this.waveAmplitude * 0.6;
+
+                    positions[i3 + 1] = this.initialPositions[i3 + 1] + wave1 + wave2 + wave3;
+                }
+
+                this.positionAttribute.needsUpdate = true;
+                this.mesh.geometry.computeVertexNormals();
+            }
+
+            setWaveAmplitude(amplitude) {
+                this.waveAmplitude = amplitude;
+            }
+        }
+
+        // ============ 地形类 ============
+        class SeafloorTerrain {
+            constructor(scene, width = 180, height = 180) {
+                this.scene = scene;
+                this.width = width;
+                this.height = height;
+                this.terrain = null;
+                this.init();
+            }
+
+            init() {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                const indices = [];
+                const segmentsX = 40;
+                const segmentsZ = 40;
+                const noise = new SimplexNoise();
+
+                for (let z = 0; z <= segmentsZ; z++) {
+                    for (let x = 0; x <= segmentsX; x++) {
+                        const px = (x / segmentsX - 0.5) * this.width;
+                        const pz = (z / segmentsZ - 0.5) * this.height;
+                        
+                        const height = (
+                            noise.noise(px * 0.015, pz * 0.015) * 4 +
+                            noise.noise(px * 0.03, pz * 0.03) * 2 +
+                            noise.noise(px * 0.06, pz * 0.06) * 1
+                        ) - 18;
+
+                        vertices.push(px, height, pz);
+                    }
+                }
+
+                for (let z = 0; z < segmentsZ; z++) {
+                    for (let x = 0; x < segmentsX; x++) {
+                        const a = z * (segmentsX + 1) + x;
+                        const b = z * (segmentsX + 1) + x + 1;
+                        const c = (z + 1) * (segmentsX + 1) + x;
+                        const d = (z + 1) * (segmentsX + 1) + x + 1;
+                        indices.push(a, c, b);
+                        indices.push(b, c, d);
+                    }
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x1a3a1a,
+                    emissive: 0x0d1f0d,
+                    shininess: 25,
+                });
+
+                this.terrain = new THREE.Mesh(geometry, material);
+                this.terrain.receiveShadow = true;
+                this.terrain.castShadow = true;
+                this.terrain.position.y = -20;
+                this.scene.add(this.terrain);
+            }
+        }
+
+        // ============ 瀑布类 ============
+        class Waterfall {
+            constructor(scene, position = { x: 0, y: 15, z: 0 }, config = {}) {
+                this.scene = scene;
+                this.position = position;
+                this.particleCount = config.particleCount || 8000;
+                this.speed = config.speed || 0.15;
+                this.width = config.width || 18;
+                this.height = config.height || 35;
+                this.particles = null;
+                this.particleGeometry = null;
+                this.particleMaterial = null;
+                this.velocities = [];
+                this.init();
+            }
+
+            init() {
+                this.particleGeometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(this.particleCount * 3);
+                const colors = new Float32Array(this.particleCount * 3);
+
+                for (let i = 0; i < this.particleCount; i++) {
+                    const i3 = i * 3;
+                    positions[i3] = this.position.x + (Math.random() - 0.5) * this.width;
+                    positions[i3 + 1] = this.position.y;
+                    positions[i3 + 2] = this.position.z + (Math.random() - 0.5) * 6;
+
+                    const colorVariation = Math.random() * 0.4 + 0.6;
+                    colors[i3] = 0.2 * colorVariation;
+                    colors[i3 + 1] = 0.85 * colorVariation;
+                    colors[i3 + 2] = 1.0 * colorVariation;
+
+                    this.velocities.push({
+                        x: (Math.random() - 0.5) * 0.03,
+                        y: -this.speed - Math.random() * 0.02,
+                        z: (Math.random() - 0.5) * 0.03
+                    });
+                }
+
+                this.particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                this.particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                this.particleMaterial = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true,
+                });
+
+                this.particles = new THREE.Points(this.particleGeometry, this.particleMaterial);
+                this.particles.position.copy(this.position);
+                this.scene.add(this.particles);
+                this.createWaterfallSource();
+            }
+
+            createWaterfallSource() {
+                const geometry = new THREE.ConeGeometry(this.width * 0.6, 2.5, 10);
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x0d4d99,
+                    emissive: 0x002266,
+                    shininess: 120,
+                });
+                const source = new THREE.Mesh(geometry, material);
+                source.position.copy(this.position);
+                source.castShadow = true;
+                source.receiveShadow = true;
+                this.scene.add(source);
+            }
+
+            update() {
+                const positions = this.particleGeometry.attributes.position.array;
+                for (let i = 0; i < this.particleCount; i++) {
+                    const i3 = i * 3;
+                    const velocity = this.velocities[i];
+
+                    positions[i3] += velocity.x;
+                    positions[i3 + 1] += velocity.y;
+                    positions[i3 + 2] += velocity.z;
+
+                    if (positions[i3 + 1] < this.position.y - this.height) {
+                        positions[i3] = this.position.x + (Math.random() - 0.5) * this.width;
+                        positions[i3 + 1] = this.position.y;
+                        positions[i3 + 2] = this.position.z + (Math.random() - 0.5) * 6;
+                        velocity.x = (Math.random() - 0.5) * 0.03;
+                        velocity.y = -this.speed - Math.random() * 0.02;
+                        velocity.z = (Math.random() - 0.5) * 0.03;
+                    }
+                }
+                this.particleGeometry.attributes.position.needsUpdate = true;
+            }
+
+            setParticleCount(count) {
+                this.scene.remove(this.particles);
+                this.particleCount = count;
+                this.velocities = [];
+                this.init();
+            }
+
+            setSpeed(speed) {
+                this.speed = speed;
+                for (let i = 0; i < this.velocities.length; i++) {
+                    this.velocities[i].y = -speed - Math.random() * 0.02;
+                }
+            }
+        }
+
+        // ============ 飞溅效果 ============
+        class WaterfallSplash {
+            constructor(scene, position = { x: 0, y: 0, z: 0 }) {
+                this.scene = scene;
+                this.position = position;
+                this.splashPool = [];
+                this.init();
+            }
+
+            init() {
+                for (let i = 0; i < 1200; i++) {
+                    const geometry = new THREE.SphereGeometry(0.1, 4, 4);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x66ddff,
+                        transparent: true,
+                        opacity: 0.7,
+                        emissive: 0x0099ff,
+                    });
+                    const particle = new THREE.Mesh(geometry, material);
+                    particle.castShadow = true;
+                    particle.visible = false;
+                    this.scene.add(particle);
+
+                    this.splashPool.push({
+                        mesh: particle,
+                        velocity: new THREE.Vector3(),
+                        life: 0,
+                        maxLife: 35,
+                        gravity: -0.12
+                    });
+                }
+            }
+
+            createSplash(count = 30) {
+                for (let i = 0; i < count; i++) {
+                    const particle = this.splashPool.find(p => !p.mesh.visible);
+                    if (!particle) continue;
+
+                    particle.mesh.position.copy(this.position);
+                    particle.mesh.visible = true;
+                    particle.life = 0;
+                    particle.maxLife = randomInRange(25, 45);
+
+                    const angle = (i / count) * Math.PI * 2;
+                    const speed = randomInRange(0.12, 0.35);
+                    particle.velocity.set(
+                        Math.cos(angle) * speed,
+                        Math.random() * 0.4 + 0.15,
+                        Math.sin(angle) * speed
+                    );
+                }
+            }
+
+            update() {
+                for (let i = 0; i < this.splashPool.length; i++) {
+                    const particle = this.splashPool[i];
+                    if (!particle.mesh.visible) continue;
+
+                    particle.life++;
+                    particle.mesh.position.add(particle.velocity);
+                    particle.velocity.y += particle.gravity;
+
+                    const lifeRatio = particle.life / particle.maxLife;
+                    particle.mesh.material.opacity = 0.7 * (1 - lifeRatio);
+
+                    if (particle.life >= particle.maxLife) {
+                        particle.mesh.visible = false;
+                    }
+                }
+            }
+        }
+
+        // ============ 装饰物 ============
+        class OceanDecorations {
+            constructor(scene) {
+                this.scene = scene;
+                this.decorations = [];
+                this.addSeaweed(8);
+                this.addRocks(12);
+            }
+
+            addSeaweed(count) {
+                for (let i = 0; i < count; i++) {
+                    const x = randomInRange(-90, 90);
+                    const z = randomInRange(-90, 90);
+                    const geometry = new THREE.BufferGeometry();
+                    const points = [];
+
+                    for (let j = 0; j < 25; j++) {
+                        const angle = Math.sin(j * 0.25) * 0.4;
+                        points.push(
+                            Math.sin(angle) * (j * 0.35),
+                            -j * 0.6,
+                            Math.cos(angle) * (j * 0.35)
+                        );
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3));
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0x00dd66,
+                        linewidth: 4,
+                        transparent: true,
+                        opacity: 0.7,
+                    });
+
+                    const seaweed = new THREE.Line(geometry, material);
+                    seaweed.position.set(x, -12, z);
+                    this.scene.add(seaweed);
+                    this.decorations.push(seaweed);
+                }
+            }
+
+            addRocks(count) {
+                for (let i = 0; i < count; i++) {
+                    const geometry = new THREE.IcosahedronGeometry(randomInRange(1.2, 3.5), 4);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0x556666,
+                        emissive: 0x223333,
+                        shininess: 15,
+                    });
+
+                    const rock = new THREE.Mesh(geometry, material);
+                    rock.position.set(
+                        randomInRange(-100, 100),
+                        randomInRange(-22, -8),
+                        randomInRange(-100, 100)
+                    );
+                    rock.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+                    rock.scale.set(
+                        randomInRange(0.7, 1.6),
+                        randomInRange(0.7, 1.6),
+                        randomInRange(0.7, 1.6)
+                    );
+                    rock.castShadow = true;
+                    rock.receiveShadow = true;
+                    this.scene.add(rock);
+                    this.decorations.push(rock);
+                }
+            }
+        }
+
+        // ============ 主场景类 ============
+        class OceanWaterfallScene {
+            constructor() {
+                this.container = document.getElementById('container');
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.ocean = null;
+                this.waterfall = null;
+                this.waterfallSplash = null;
+                this.terrain = null;
+                this.fpsCounter = new FPSCounter();
+                this.clock = new THREE.Clock();
+                this.config = {
+                    waveAmplitude: 0.8,
+                    particleCount: 8000,
+                    waterfallSpeed: 0.15,
+                    lightIntensity: 1.2,
+                    fogDensity: 0.008,
+                };
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLights();
+                this.setupObjects();
+                this.setupControls();
+                this.setupUIEvents();
+                this.animate();
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000011);
+                this.scene.fog = new THREE.FogExp2(0x000022, this.config.fogDensity);
+            }
+
+            setupCamera() {
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+                this.camera.position.set(60, 45, 60);
+                this.camera.lookAt(0, 0, 0);
+            }
+
+            setupRenderer() {
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+                this.container.appendChild(this.renderer.domElement);
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0x4488dd, 0.7);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, this.config.lightIntensity);
+                directionalLight.position.set(60, 60, 40);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -120;
+                directionalLight.shadow.camera.right = 120;
+                directionalLight.shadow.camera.top = 120;
+                directionalLight.shadow.camera.bottom = -120;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 500;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                this.directionalLight = directionalLight;
+
+                const pointLight = new THREE.PointLight(0x0088ff, 1, 120);
+                pointLight.position.set(0, 8, 0);
+                this.scene.add(pointLight);
+            }
+
+            setupObjects() {
+                this.ocean = new Ocean(this.scene);
+                this.terrain = new SeafloorTerrain(this.scene);
+                new OceanDecorations(this.scene);
+
+                this.waterfall = new Waterfall(this.scene, { x: 0, y: 15, z: -60 }, {
+                    particleCount: this.config.particleCount,
+                    speed: this.config.waterfallSpeed,
+                    width: 18,
+                    height: 35,
+                });
+
+                this.waterfallSplash = new WaterfallSplash(this.scene, { x: 0, y: -18, z: -60 });
+            }
+
+            setupControls() {
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.autoRotate = true;
+                this.controls.autoRotateSpeed = 0.8;
+                this.controls.maxDistance = 250;
+                this.controls.minDistance = 25;
+            }
+
+            setupUIEvents() {
+                document.getElementById('waveAmplitude').addEventListener('input', (e) => {
+                    this.config.waveAmplitude = parseFloat(e.target.value);
+                    document.getElementById('waveAmplitudeValue').textContent = e.target.value;
+                    this.ocean.setWaveAmplitude(this.config.waveAmplitude);
+                });
+
+                document.getElementById('particleCount').addEventListener('input', (e) => {
+                    this.config.particleCount = parseInt(e.target.value);
+                    document.getElementById('particleCountValue').textContent = e.target.value;
+                    document.getElementById('particleNum').textContent = e.target.value;
+                    this.waterfall.setParticleCount(this.config.particleCount);
+                });
+
+                document.getElementById('waterfallSpeed').addEventListener('input', (e) => {
+                    this.config.waterfallSpeed = parseFloat(e.target.value);
+                    document.getElementById('waterfallSpeedValue').textContent = e.target.value;
+                    this.waterfall.setSpeed(this.config.waterfallSpeed);
+                });
+
+                document.getElementById('lightIntensity').addEventListener('input', (e) => {
+                    this.config.lightIntensity = parseFloat(e.target.value);
+                    document.getElementById('lightIntensityValue').textContent = e.target.value;
+                    this.directionalLight.intensity = this.config.lightIntensity;
+                });
+
+                document.getElementById('fogDensity').addEventListener('input', (e) => {
+                    this.config.fogDensity = parseFloat(e.target.value);
+                    document.getElementById('fogDensityValue').textContent = e.target.value;
+                    this.scene.fog.density = this.config.fogDensity;
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => this.resetScene());
+                document.getElementById('toggleInfo').addEventListener('click', () => {
+                    const info = document.getElementById('info');
+                    info.style.display = info.style.display === 'none' ? 'block' : 'none';
+                });
+            }
+
+            resetScene() {
+                this.camera.position.set(60, 45, 60);
+                this.controls.reset();
+                document.getElementById('waveAmplitude').value = 0.8;
+                document.getElementById('particleCount').value = 8000;
+                document.getElementById('waterfallSpeed').value = 0.15;
+                document.getElementById('lightIntensity').value = 1.2;
+                document.getElementById('fogDensity').value = 0.008;
+                this.ocean.setWaveAmplitude(0.8);
+                this.waterfall.setSpeed(0.15);
+                this.directionalLight.intensity = 1.2;
+                this.scene.fog.density = 0.008;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                const deltaTime = this.clock.getDelta();
+
+                this.ocean.update(deltaTime);
+                this.waterfall.update();
+                this.waterfallSplash.update();
+
+                if (Math.random() < 0.06) {
+                    this.waterfallSplash.createSplash(randomInRange(8, 25));
+                }
+
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+
+                const fps = this.fpsCounter.update();
+                document.getElementById('fps').textContent = fps;
+            }
+
+            onWindowResize() {
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            }
+        }
+
+        // ============ 启动场景 ============
+        window.addEventListener('load', () => {
+            new OceanWaterfallScene();
+        });
+    </script>
+</body>
+</html>
